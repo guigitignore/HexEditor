@@ -1,6 +1,6 @@
 from __future__ import annotations
-from PySide6.QtWidgets import QApplication, QMainWindow, QTextEdit,QWidget,QScrollArea
-from PySide6.QtGui import QPainter,QWheelEvent
+from PySide6.QtWidgets import QApplication, QMainWindow, QTextEdit,QWidget
+from PySide6.QtGui import QPainter,QKeyEvent,QResizeEvent,QTextCursor,QTextCharFormat,QColor,QCursor
 from PySide6.QtCore import QSize,Qt,QPoint,Slot,QRect
 
 
@@ -54,53 +54,36 @@ class LineNumberArea(QWidget):
     
     def scroll(self,dx,dy):
         self.top-=dy
-
+        self.update()
     
     def paintEvent(self, event):
-        #print(f"paintevent {self.width()}")
-        #cursor = self.editor.cursorForPosition(self.editor.viewport().rect().topLeft())
-        #print(cursor.position(),self.editor.viewport().rect().topLeft())
-        
         painter = QPainter(self)
-        print(self.top//self.editor.fontMetrics().height())
+        stepY=self.editor.fontMetrics().lineSpacing()
+        top=event.rect().topLeft().y()
+        topLine=(self.top+top)//stepY
+
+        offset=(self.top+top)%stepY
+        if offset:
+            top-=offset
+            top+=stepY
+            topLine+=1
         
         painter.fillRect(event.rect(), Qt.red)
-        top=event.rect().topLeft().y()
+
+        
         bottom=event.rect().bottomLeft().y()
-        stepY=self.editor.fontMetrics().height()
+        totalLine=self.editor.getLineCount()
     
 
         hexformat="0{}X".format(self.charNeeded())
-        textCursor=self.editor.textCursor()
 
-        y=self.editor.cursorRect(textCursor).topLeft().y()
-        lineLenght=self.editor.columnNumberArea().characterCount()
-        lineNumber=textCursor.position()//lineLenght
-
-        """
-        if textCursor.position()%lineLenght==0 and textCursor.position():
-            lineNumber-=1
-            print("increment")
-            pass
-        
-        
-
-        maxLine=self.editor.getLineCount()
-
-        painter.setPen(Qt.black)
-        painter.setFont(self.editor.font())
-        
-        while (y>=top):
-            y-=stepY
-            lineNumber-=1
-
-        while (y<=bottom):
-            painter.drawText(0, y, self.width(), self.height(), Qt.AlignLeft, format(lineNumber<<4,hexformat))
-            y+=stepY
-            lineNumber+=1
-            if lineNumber>=maxLine:
+        while (top<bottom):
+            if (topLine>=totalLine):
                 break
-        """
+            painter.drawText(0, top, self.width(), self.height(), Qt.AlignLeft, format(topLine<<4,hexformat))
+            top+=stepY+1
+            topLine+=1
+
         painter.end()
 
 class CustomTextEdit(QTextEdit):
@@ -115,7 +98,11 @@ class CustomTextEdit(QTextEdit):
         self.setFont(monospaced_font)
 
         # Set a fixed width for the widget
-        
+        self.cursor:QTextCursor=self.textCursor()
+
+        self.word_format=QTextCharFormat()
+        self.word_format.setForeground(QColor("black"))
+        self.word_format.setBackground(QColor("yellow"))
 
         # Set up the signal for cursor position changes
         self.cursorPositionChanged.connect(self.onCursorPositionChanged)
@@ -126,6 +113,7 @@ class CustomTextEdit(QTextEdit):
         self.viewport().setFixedWidth(self.columnNumberArea().getWidth())
         self.document().setDocumentMargin(0)
         self.viewport().setMaximumWidth(self.columnNumberArea().getWidth())
+        
         self.setLineWrapMode(QTextEdit.WidgetWidth)
 
         self.lineNumberArea().move(0,self.contentsMargins().top()+self.columnNumberArea().getHeight())
@@ -136,17 +124,44 @@ class CustomTextEdit(QTextEdit):
         
     def lineNumberArea(self):
         return self.line_number_area
-    
 
     def columnNumberArea(self):
         return self.column_number_area
     
     def getLineCount(self):
         return (self.document().characterCount()-1)//(self.columnNumberArea().characterCount())+1
+    
+    def resizeEvent(self, e: QResizeEvent) -> None:
+        self.lineNumberArea().resize(self.lineNumberArea().width(),self.viewport().height())
+        return super().resizeEvent(e)
 
     def scrollContentsBy(self, dx: int, dy: int) -> None:
         self.lineNumberArea().scroll(0,dy)
         return super().scrollContentsBy(dx, dy)
+    
+
+    def selectWord(self)->QTextCursor:
+        cursor=self.textCursor()
+        cursor.movePosition(QTextCursor.Left,QTextCursor.MoveAnchor,cursor.position()%3)
+        cursor.movePosition(QTextCursor.Right, QTextCursor.KeepAnchor, 2)
+        return cursor
+    
+    def selectByte(self,n:int)->QTextCursor:
+        cursor=self.textCursor()
+        cursor.setPosition(n*3)
+        cursor.movePosition(QTextCursor.Right, QTextCursor.KeepAnchor, 2)
+        return cursor
+    
+    def highlightCursor(self,cursor:QTextCursor):
+        self.cursor.setCharFormat(QTextCharFormat())
+        self.cursor=cursor
+        self.cursor.setCharFormat(self.word_format)
+
+    def highlightByte(self,n:int):
+        self.highlightCursor(self.selectByte(n))
+
+    def highlightWord(self):
+        self.highlightCursor(self.selectWord())
 
     def onCursorPositionChanged(self):
         #print(self.document().characterCount()-1,self.columnNumberArea().characterCount())
@@ -154,6 +169,54 @@ class CustomTextEdit(QTextEdit):
         if (self.lastLineCount!=currentLineCount):
             self.lineNumberUpdate()
             self.lastLineCount=currentLineCount
+
+        self.highlightWord()
+
+
+    def keyPressEvent(self, event:QKeyEvent):
+        #print(self.textCursor().positionInBlock())
+        key=event.text().capitalize()
+
+        if event.key()==Qt.Key_Insert:
+            position=self.textCursor().position()
+            cursor=self.textCursor()
+            cursor.movePosition(QTextCursor.Right,QTextCursor.MoveAnchor,3-position%3)
+            cursor.insertText("00 ")
+
+        if event.key()==Qt.Key_Delete:
+            cursor=self.selectWord()
+            cursor.movePosition(QTextCursor.Right, QTextCursor.KeepAnchor, 1) # select space
+            cursor.removeSelectedText()
+        
+
+        if key in "0123456789ABCDEF":
+            offset=self.textCursor().position()%3
+            if offset!=2:
+                cursor=self.textCursor()
+                cursor.movePosition(QTextCursor.Right, QTextCursor.KeepAnchor, 1)
+                cursor.insertText(key)
+
+            if offset!=1:
+                self.moveCursor(QTextCursor.Right,QTextCursor.MoveAnchor)
+
+        if event.key() == Qt.Key_Backspace:
+            offset=self.textCursor().position()%3
+            if offset:
+                cursor=self.textCursor()
+                cursor.movePosition(QTextCursor.Left, QTextCursor.KeepAnchor, 1)
+                cursor.removeSelectedText()
+                cursor.insertText("0")
+                if (offset==1):
+                    self.moveCursor(QTextCursor.Left,QTextCursor.MoveAnchor)
+
+            self.moveCursor(QTextCursor.Left,QTextCursor.MoveAnchor)
+
+        if event.key()==Qt.Key_Space:
+            self.moveCursor(QTextCursor.Right,QTextCursor.MoveAnchor)
+            
+        if event.key() in [Qt.Key_Left,Qt.Key_Right,Qt.Key_Up,Qt.Key_Down]:
+            super().keyPressEvent(event)
+
 
     def lineNumberUpdate(self):
         
