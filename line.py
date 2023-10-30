@@ -176,30 +176,33 @@ class CustomTextEdit(QTextEdit):
     def keyPressEvent(self, event:QKeyEvent):
         #print(self.textCursor().positionInBlock())
         key=event.text().capitalize()
+        
+        if event.key() in [Qt.Key_Left,Qt.Key_Right,Qt.Key_Up,Qt.Key_Down]:
+            super().keyPressEvent(event)
 
-        if event.key()==Qt.Key_Insert:
+        elif event.key()==Qt.Key_Insert:
             position=self.textCursor().position()
             cursor=self.textCursor()
             cursor.movePosition(QTextCursor.Right,QTextCursor.MoveAnchor,3-position%3)
             cursor.insertText("00 ")
 
-        if event.key()==Qt.Key_Delete:
+        elif event.key()==Qt.Key_Delete:
             cursor=self.selectWord()
             cursor.movePosition(QTextCursor.Right, QTextCursor.KeepAnchor, 1) # select space
             cursor.removeSelectedText()
         
 
-        if key in "0123456789ABCDEF":
+        elif key in "0123456789ABCDEF" and not self.textCursor().atEnd():
             offset=self.textCursor().position()%3
             if offset!=2:
                 cursor=self.textCursor()
                 cursor.movePosition(QTextCursor.Right, QTextCursor.KeepAnchor, 1)
                 cursor.insertText(key)
 
-            if offset!=1:
+            if offset!=0:
                 self.moveCursor(QTextCursor.Right,QTextCursor.MoveAnchor)
 
-        if event.key() == Qt.Key_Backspace:
+        elif event.key() == Qt.Key_Backspace:
             offset=self.textCursor().position()%3
             if offset:
                 cursor=self.textCursor()
@@ -211,11 +214,10 @@ class CustomTextEdit(QTextEdit):
 
             self.moveCursor(QTextCursor.Left,QTextCursor.MoveAnchor)
 
-        if event.key()==Qt.Key_Space:
+        elif event.key()==Qt.Key_Space:
             self.moveCursor(QTextCursor.Right,QTextCursor.MoveAnchor)
             
-        if event.key() in [Qt.Key_Left,Qt.Key_Right,Qt.Key_Up,Qt.Key_Down]:
-            super().keyPressEvent(event)
+        
 
 
     def lineNumberUpdate(self):
