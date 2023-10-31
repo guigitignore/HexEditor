@@ -2,41 +2,8 @@ import sys
 from PySide6.QtCore import *
 from PySide6.QtWidgets import *
 from PySide6.QtGui import *
-
-
-class CustomReadOnlyTextEdit(QTextEdit):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setReadOnly(True)
-        self.cursor=self.textCursor()
-
-    def mousePressEvent(self, event:QMouseEvent):
-        self.cursor.setCharFormat(QTextCharFormat())
-        cursor = self.cursorForPosition(event.position().toPoint())
-        
-        line = cursor.blockNumber()  # Line number is 1-based
-        column = cursor.columnNumber()  # Column number is 1-based
-        print(f"Clicked at Line {line}, Column {column}")
-
-        nchar=column%3
-        if nchar!=2:
-            self.highlight_text(line,column-nchar,line,column-nchar+2)
-
-
-        super().mousePressEvent(event)
-
-    def highlight_text(self,start_line,start_column,end_line,end_column):
-        start_pos = self.textCursor().document().findBlockByLineNumber(start_line).position() + start_column 
-        end_pos = self.textCursor().document().findBlockByLineNumber(end_line).position() + end_column 
-
-        cursor = self.textCursor()
-        cursor.setPosition(start_pos)
-        cursor.setPosition(end_pos, QTextCursor.KeepAnchor)
-        
-        format = QTextCharFormat()
-        format.setBackground(Qt.yellow)
-        cursor.setCharFormat(format)
-        
+from hexeditor import HexEditor
+from connector import EditorConnector        
         
 
 class MainWindow(QMainWindow):
@@ -50,15 +17,16 @@ class MainWindow(QMainWindow):
         layout.addWidget(QLabel("Hexa text"), 1, 2)
 
         self.clear_text = QTextEdit()
-        self.hexa_text = CustomReadOnlyTextEdit()
+        self.hexa_text = HexEditor()
+
+        self.connector=EditorConnector(self.clear_text,self.hexa_text)
 
         # Set line wrap mode to NoWrap
         self.clear_text.setLineWrapMode(QTextEdit.NoWrap)
-        self.hexa_text.setLineWrapMode(QTextEdit.NoWrap)
 
         # Add horizontal scrollbar when needed
         self.clear_text.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
-        self.hexa_text.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
+        
 
         layout.addWidget(self.clear_text, 2, 1)
         layout.addWidget(self.hexa_text, 2, 2)
@@ -94,14 +62,10 @@ class MainWindow(QMainWindow):
 
         if filename:
             with open(filename, "rb") as file:
-                binary_lines = file.read().split(b'\n')
+                data = file.read()
+                self.hexa_text.setBytes(data)
+                self.clear_text.setText(data.decode())
 
-                for binary_line in binary_lines:
-                    hex_line=" ".join([format(byte,'x') for byte in binary_line])
-                    clear_line=binary_line.decode("utf-8") 
-
-                    self.clear_text.append(clear_line)
-                    self.hexa_text.append(hex_line)
                 
 
 app = QApplication(sys.argv)
