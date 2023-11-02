@@ -64,7 +64,7 @@ class MainWindow(QMainWindow):
             with open(filename, "rb") as file:
                 data = file.read()
                 self.hexa_text.setBytes(data)
-                self.clear_text.setText(data.decode())
+                #self.clear_text.setText(data.decode())
 
                 
 

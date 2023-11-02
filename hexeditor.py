@@ -159,7 +159,7 @@ class HexEditor(QTextEdit):
         cursor=self.textCursor()
         cursor.movePosition(QTextCursor.Left,QTextCursor.MoveAnchor,cursor.position()%3)
         cursor.movePosition(QTextCursor.Right, QTextCursor.KeepAnchor, 2)
-        return cursor.hex_text
+        return cursor
     
     def selectByte(self,n:int)->QTextCursor:
         cursor=self.textCursor()
@@ -170,6 +170,7 @@ class HexEditor(QTextEdit):
     def highlightCursor(self,cursor:QTextCursor):
         self.cursor.setCharFormat(QTextCharFormat())
         self.cursor=cursor
+        #print(cursor.selection())
         self.cursor.setCharFormat(self.word_format)
 
     def highlightByte(self,n:int):
