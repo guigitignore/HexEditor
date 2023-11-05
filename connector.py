@@ -11,11 +11,29 @@ class EditorConnector:
         self.plain_text.textChanged.connect(self.plainTextChanged)
         self.hex_text.textChanged.connect(self.hexTextChanged)
 
-        self.plain_text.cursorPositionChanged.connect(self.plainTextPositionChanged)
-        self.hex_text.cursorPositionChanged.connect(self.hexTextPositionChanged)
+        self.plain_text.verticalScrollBar().valueChanged.connect(self.syncScrollbars)
+        self.hex_text.verticalScrollBar().valueChanged.connect(self.syncScroll)
+
+        #self.plain_text.cursorPositionChanged.connect(self.plainTextPositionChanged)
+        #self.hex_text.cursorPositionChanged.connect(self.hexTextPositionChanged)
 
         self.text_updating=False
         self.cursor_updating=False
+        self.scroll_updating=False
+
+    def syncScrollbars(self):
+        if not self.scroll_updating:
+            self.scroll_updating=True
+            value = self.plain_text.verticalScrollBar().value()
+            self.hex_text.verticalScrollBar().setValue(value)
+            self.scroll_updating=False
+
+    def syncScroll(self,dy):
+        if not self.scroll_updating:
+            self.scroll_updating=True
+            value = self.hex_text.verticalScrollBar().value()
+            self.plain_text.verticalScrollBar().setValue(value)
+            self.scroll_updating=False
 
     def plainTextChanged(self):
         if not self.text_updating:
@@ -42,7 +60,7 @@ class EditorConnector:
 
             position=self.plain_text.textCursor().position()
             cursor=self.hex_text.textCursor()
-            self.hex_text.verticalSrollbar.setSliderPosition((position*3 /self.hex_text.document().characterCount())*self.hex_text.verticalSrollbar.maximum())
+           
             cursor.setPosition(position*3)
             self.hex_text.setTextCursor(cursor)
 

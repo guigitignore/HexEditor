@@ -86,12 +86,9 @@ class HexEditor(QTextEdit):
 
             painter.end()
 
-    class VerticalScrollbar(QScrollBar):
-        def __init__(self,editor:HexEditor):
-            super().__init__(editor)
+
+    scrollSignal=Signal(int)
             
-
-
 
     def __init__(self):
         super().__init__()
@@ -115,9 +112,7 @@ class HexEditor(QTextEdit):
 
         self.columnNumberArea= self.ColumnNumberArea(self)
         self.lineNumberArea = self.LineNumberArea(self)
-        self.verticalSrollbar=QScrollBar(Qt.Vertical,self)
-        self.verticalSrollbar.setFixedWidth(self.fontMetrics().averageCharWidth()*2)
-        self.verticalSrollbar.valueChanged.connect(self.verticalScrollBar().setValue)
+    
 
         viewportWidth=self.columnNumberArea.getWidth()
 
@@ -125,6 +120,7 @@ class HexEditor(QTextEdit):
         #self.viewport().setMaximumWidth(viewportWidth)
         self.document().setDocumentMargin(0)
         self.viewport().resize(viewportWidth,self.viewport().height())
+        
 
         
         self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
@@ -145,13 +141,11 @@ class HexEditor(QTextEdit):
     def resizeEvent(self, e: QResizeEvent) -> None:
         super().resizeEvent(e)
         self.lineNumberArea.resize(self.lineNumberArea.width(),self.viewport().height())
-        self.verticalSrollbar.setRange(0, self.verticalScrollBar().maximum())
-        
-        self.verticalSrollbar.setFixedHeight(self.viewport().height())
         
 
     def scrollContentsBy(self, dx: int, dy: int) -> None:
         self.lineNumberArea.scroll(0,dy)
+        self.scrollSignal.emit(dy)
         return super().scrollContentsBy(dx, dy)
     
 
@@ -249,13 +243,9 @@ class HexEditor(QTextEdit):
             self.setViewportMargins(viewportLeftMargin,viewportTopMargin,0,0)
             self.columnNumberArea.move(self.contentsMargins().left()+viewportLeftMargin,0)
 
-            self.verticalSrollbar.move(viewportLeftMargin+self.viewport().width(),viewportTopMargin)
-
             self.lineNumberArea.resize(viewportLeftMargin,self.lineNumberArea.getHeight())
 
-            self.verticalSrollbar.setRange(0, self.verticalScrollBar().maximum())
-
-            self.setMaximumWidth(viewportLeftMargin+self.columnNumberArea.getWidth()+self.verticalSrollbar.width())
+            self.setFixedWidth(viewportLeftMargin+self.columnNumberArea.getWidth())
         else:
             self.lineNumberArea.update()
 
@@ -267,6 +257,6 @@ class HexEditor(QTextEdit):
     def update_line_number_area(self, rect, dy):
         #print("update_line_number_area")
         if dy:
-            self.line_number_area.scroll(0, dy)
+            self.lineNumberArea.scroll(0, dy)
         
         
