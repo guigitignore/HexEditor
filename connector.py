@@ -1,11 +1,11 @@
 from hexeditor import HexEditor
 from PySide6.QtWidgets import QTextEdit
-
+from plaintexteditor import PlainTextEditor
 
 class EditorConnector:
 
-    def __init__(self,plain_text:QTextEdit,hex_text:HexEditor) -> None:
-        self.plain_text:QTextEdit=plain_text
+    def __init__(self,plain_text:PlainTextEditor,hex_text:HexEditor) -> None:
+        self.plain_text:PlainTextEditor=plain_text
         self.hex_text:HexEditor=hex_text
 
         self.plain_text.textChanged.connect(self.plainTextChanged)
@@ -38,20 +38,16 @@ class EditorConnector:
     def plainTextChanged(self):
         if not self.text_updating:
             self.text_updating=True
-
-            try:
-                self.hex_text.setBytes(self.plain_text.toPlainText().encode())
-            finally:
-                self.text_updating=False
+            #print("update hex text")
+            self.hex_text.updateBytes()
+            self.text_updating=False
 
     def hexTextChanged(self):
         if not self.text_updating:
             self.text_updating=True
-
-            try:
-                self.plain_text.setText(bytes.fromhex(self.hex_text.toPlainText()).decode(errors="replace"))
-            finally:
-                self.text_updating=False
+            #print("update plain text")
+            self.plain_text.updateBytes()
+            self.text_updating=False
 
 
     def plainTextPositionChanged(self):

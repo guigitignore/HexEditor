@@ -5,20 +5,21 @@ from PySide6.QtGui import *
 from hexeditor import HexEditor
 from connector import EditorConnector  
 from plaintexteditor import PlainTextEditor      
+from document import TextDocument
         
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         #self.setMinimumSize(800, 600)
-
+        self.document=TextDocument()
         # Create a layout
         layout = QGridLayout()
         layout.addWidget(QLabel("Plain text"), 1, 2)
         layout.addWidget(QLabel("Hexa text"), 1, 1)
 
-        self.clear_text = PlainTextEditor()
-        self.hexa_text = HexEditor()
+        self.clear_text = PlainTextEditor(self.document)
+        self.hexa_text = HexEditor(self.document)
 
         self.connector=EditorConnector(self.clear_text,self.hexa_text)
 

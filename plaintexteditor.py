@@ -2,6 +2,7 @@ from __future__ import annotations
 from PySide6.QtWidgets import QTextEdit,QWidget,QScrollBar
 from PySide6.QtGui import QPainter,QKeyEvent,QResizeEvent,QTextCursor,QTextCharFormat,QColor,QMouseEvent
 from PySide6.QtCore import QSize,Qt,Slot,Signal
+from document import TextDocument
 
 
 class PlainTextEditor(QTextEdit):
@@ -36,8 +37,10 @@ class PlainTextEditor(QTextEdit):
     
         
 
-    def __init__(self):
+    def __init__(self,doc:TextDocument):
         super().__init__()
+
+        self.doc=doc
 
         # Set a monospaced font
         monospaced_font = self.font()
@@ -72,11 +75,6 @@ class PlainTextEditor(QTextEdit):
         self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         
         self.setLineWrapMode(QTextEdit.WidgetWidth)
-
-        
-    
-    def getLineCount(self):
-        return (self.document().characterCount()-1)//(self.columnNumberArea.characterCount())+1
     
 
     def selectWord(self)->QTextCursor:
@@ -103,7 +101,12 @@ class PlainTextEditor(QTextEdit):
         self.highlightCursor(self.selectWord())
 
     def onCursorPositionChanged(self):
-        self.highlightWord()
+        if self.hasFocus():
+            self.highlightWord()
+
+    def focusOutEvent(self,e):
+        self.cursor.clearSelection()
+        super().focusOutEvent(e)
     
     def mousePressEvent(self, event:QMouseEvent):
         cursor = self.cursorForPosition(event.pos())
@@ -112,11 +115,44 @@ class PlainTextEditor(QTextEdit):
 
 
     def keyPressEvent(self, event:QKeyEvent):
+        t=event.text()
+
+        if event.key()==Qt.Key_Insert:
+            return
+
+        elif event.key()==Qt.Key_Delete:
+            return
+        
+        elif event.key() == Qt.Key_Backspace:
+            position=self.textCursor().position()
+            if position:
+                self.doc.deleteByte(position-1)
+
+        elif len(t):
+            self.doc.insertByte(self.textCursor().position(),ord(t))
+
         super().keyPressEvent(event)
 
 
+    def updateBytes(self):
+        self.setBytes(self.doc.getBytes())
+
+
     def setBytes(self,b:bytes):
-        pass
+        def replace_byte(value):
+            default_byte=0x2e # middle point
+
+            if (value<0x20):
+                return default_byte
+            
+            if (value>0x7e):
+                return default_byte
+            
+            return value #unchanged
+
+        self.setText(bytes([replace_byte(i) for i in list(b)]).decode())
+
+    
 
         
         

@@ -2,6 +2,7 @@ from __future__ import annotations
 from PySide6.QtWidgets import QTextEdit,QWidget,QScrollBar
 from PySide6.QtGui import QPainter,QKeyEvent,QResizeEvent,QTextCursor,QTextCharFormat,QColor,QMouseEvent
 from PySide6.QtCore import QSize,Qt,Slot,Signal
+from document import TextDocument
 
 
 class HexEditor(QTextEdit):
@@ -90,9 +91,10 @@ class HexEditor(QTextEdit):
     scrollSignal=Signal(int)
             
 
-    def __init__(self):
+    def __init__(self,doc:TextDocument):
         super().__init__()
 
+        self.doc=doc
         # Set a monospaced font
         monospaced_font = self.font()
         monospaced_font.setFamily("Courier New")
@@ -180,7 +182,12 @@ class HexEditor(QTextEdit):
             self.lineNumberUpdate()
             self.lastLineCount=currentLineCount
 
-        self.highlightWord()
+        if self.hasFocus():
+            self.highlightWord()
+
+    def focusOutEvent(self,e):
+        self.cursor.clearSelection()
+        super().focusOutEvent(e)
     
     def mousePressEvent(self, event:QMouseEvent):
         cursor = self.cursorForPosition(event.pos())
@@ -193,6 +200,8 @@ class HexEditor(QTextEdit):
         key=event.text().capitalize()
         
         if event.key() in [Qt.Key_Left,Qt.Key_Right,Qt.Key_Up,Qt.Key_Down]:
+            if event.modifiers() == Qt.ShiftModifier:
+                return
             super().keyPressEvent(event)
 
         elif event.key()==Qt.Key_Insert:
@@ -200,11 +209,13 @@ class HexEditor(QTextEdit):
             cursor=self.textCursor()
             cursor.movePosition(QTextCursor.Right,QTextCursor.MoveAnchor,3-position%3)
             cursor.insertText("00 ")
+            self.doc.insertByte(cursor.position()//3,0)
 
         elif event.key()==Qt.Key_Delete:
             cursor=self.selectWord()
             cursor.movePosition(QTextCursor.Right, QTextCursor.KeepAnchor, 1) # select space
             cursor.removeSelectedText()
+            self.doc.deleteByte(cursor.position()//3)
         
 
         elif key in "0123456789ABCDEF" and not self.textCursor().atEnd():
@@ -213,6 +224,11 @@ class HexEditor(QTextEdit):
                 cursor=self.textCursor()
                 cursor.movePosition(QTextCursor.Right, QTextCursor.KeepAnchor, 1)
                 cursor.insertText(key)
+
+                position=self.cursor.position()//3
+                value=int(self.cursor.selectedText(),16)
+                self.doc.setByte(position,value)
+
 
             if offset!=0:
                 self.moveCursor(QTextCursor.Right,QTextCursor.MoveAnchor)
@@ -224,6 +240,11 @@ class HexEditor(QTextEdit):
                 cursor.movePosition(QTextCursor.Left, QTextCursor.KeepAnchor, 1)
                 cursor.removeSelectedText()
                 cursor.insertText("0")
+
+                position=self.cursor.position()//3
+                value=int(self.cursor.selectedText(),16)
+                self.doc.setByte(position,value)
+
                 if (offset==1):
                     self.moveCursor(QTextCursor.Left,QTextCursor.MoveAnchor)
 
@@ -251,6 +272,9 @@ class HexEditor(QTextEdit):
 
     def setBytes(self,b:bytes):
         self.setText(" ".join([format(byte,'02X') for byte in b]))
+
+    def updateBytes(self):
+        self.setBytes(self.doc.getBytes())
 
 
     @Slot()
