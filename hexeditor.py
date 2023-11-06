@@ -185,9 +185,6 @@ class HexEditor(QTextEdit):
         if self.hasFocus():
             self.highlightWord()
 
-    def focusOutEvent(self,e):
-        self.cursor.clearSelection()
-        super().focusOutEvent(e)
     
     def mousePressEvent(self, event:QMouseEvent):
         cursor = self.cursorForPosition(event.pos())
