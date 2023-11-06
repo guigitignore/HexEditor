@@ -1,5 +1,7 @@
 # HexEditor
 
+![screenshot](screenshot.png)
+
 ## Running:
 
 create an environment and install requirements: `pip install -r requirements.txt`
